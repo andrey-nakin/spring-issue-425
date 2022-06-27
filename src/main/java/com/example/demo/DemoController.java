@@ -2,6 +2,7 @@ package com.example.demo;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -20,9 +21,9 @@ public class DemoController {
 
     public DemoController(BatchLoaderRegistry reg) {
         reg.forTypePair(String.class, Integer.class)
-                .registerMappedBatchLoader((values, env) -> Mono.just(loadInt(values, env)));
+                .registerMappedBatchLoader((values, env) -> Mono.fromCompletionStage(loadInt(values, env)));
         reg.forTypePair(Integer.class, Boolean.class)
-                .registerMappedBatchLoader((values, env) -> Mono.just(loadBool(values, env)));
+                .registerMappedBatchLoader((values, env) -> Mono.fromCompletionStage(loadBool(values, env)));
     }
 
     @QueryMapping
@@ -37,11 +38,13 @@ public class DemoController {
         return dl1.load(myObject.getInput()).thenCompose(i -> dl2.load(i));
     }
 
-    public Map<String, Integer> loadInt(Set<String> keys, final BatchLoaderEnvironment env) {
-        return keys.stream().collect(Collectors.toMap(Function.identity(), (String value) -> Integer.valueOf(value)));
+    private CompletionStage<Map<String, Integer>> loadInt(Set<String> keys, final BatchLoaderEnvironment env) {
+        return CompletableFuture.supplyAsync(() -> keys.stream()
+                .collect(Collectors.toMap(Function.identity(), (String value) -> Integer.valueOf(value))));
     }
 
-    public Map<Integer, Boolean> loadBool(Set<Integer> keys, final BatchLoaderEnvironment env) {
-        return keys.stream().collect(Collectors.toMap(Function.identity(), (Integer value) -> value % 2 == 0));
+    private CompletionStage<Map<Integer, Boolean>> loadBool(Set<Integer> keys, final BatchLoaderEnvironment env) {
+        return CompletableFuture.supplyAsync(
+                () -> keys.stream().collect(Collectors.toMap(Function.identity(), (Integer value) -> value % 2 == 0)));
     }
 }
