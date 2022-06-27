@@ -1,0 +1,7 @@
+type Query {
+  myObject(input: String): MyObject!
+}
+
+type MyObject {
+  myField: Boolean!
+}
